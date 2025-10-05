@@ -64,13 +64,14 @@ function handleGroceriesEdit(e) {
     var sheet = range.getSheet();
     if (!sheet || sheet.getName() !== CONFIG.SHEET_NAME) return;
 
-    // Only act on edits in the Item column (A)
+    var props = PropertiesService.getScriptProperties();
+
+    // If editing the Item column (A), send new item notification
     if (range.getColumn() === CONFIG.COL_ITEM && range.getRow() >= 2) {
       var newValue = range.getValue();
       if (!newValue) return; // ignore clears
 
       var key = 'notified:' + range.getRow() + '|' + String(newValue).trim();
-      var props = PropertiesService.getScriptProperties();
       if (props.getProperty(key)) {
         // already notified for this row+value
         return;
@@ -80,6 +81,23 @@ function handleGroceriesEdit(e) {
       sendImmediateNewItemEmail(newValue, range.getRow());
       props.setProperty(key, new Date().toISOString());
     }
+
+    // If editing the Done column (B), send checked notification if checked
+    if (range.getColumn() === CONFIG.COL_DONE && range.getRow() >= 2) {
+      var checked = range.getValue();
+      var itemValue = range.getSheet().getRange(range.getRow(), CONFIG.COL_ITEM).getValue();
+      if (!itemValue) return;
+      var checkedKey = 'checked:' + range.getRow() + '|' + String(itemValue).trim();
+      if (checked === true || String(checked).toLowerCase() === 'true') {
+        if (!props.getProperty(checkedKey)) {
+          sendItemCheckedEmail(itemValue, range.getRow());
+          props.setProperty(checkedKey, new Date().toISOString());
+        }
+      } else {
+        // If unchecked, clear the checked notification cache for this item
+        props.deleteProperty(checkedKey);
+      }
+    }
   } catch (err) {
     Logger.log('Error in handleGroceriesEdit: ' + err);
   }
@@ -88,6 +106,14 @@ function handleGroceriesEdit(e) {
 function sendImmediateNewItemEmail(itemName, row) {
   var body = 'A new grocery item was added (row ' + row + '):\n\n' + itemName + '\n\nPlease check it when you shop.';
   MailApp.sendEmail(CONFIG.EMAILS.join(','), 'New grocery item added', body);
+}
+
+/**
+ * Send an email when an item is checked as done
+ */
+function sendItemCheckedEmail(itemName, row) {
+  var body = 'The grocery item has been checked as done (row ' + row + '):\n\n' + itemName + '\n\nYou may remove it from your shopping list.';
+  MailApp.sendEmail(CONFIG.EMAILS.join(','), 'Grocery item checked as done', body);
 }
 
 /**
