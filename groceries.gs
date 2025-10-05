@@ -229,7 +229,7 @@ function sendImmediateNewItemEmail(itemName, row) {
  * Send an email when an item is checked as done
  */
 function sendItemCheckedEmail(itemName, row) {
-  var body = [
+  var bodyLines = [
     'Hello,',
     '',
     'The following grocery item has been checked as done:',
@@ -241,7 +241,7 @@ function sendItemCheckedEmail(itemName, row) {
     '',
     'Best regards,',
     'Groceries Reminder Bot'
-  ].join('\n');
+  ];
   var subject = 'Grocery Item Checked: ' + itemName;
   var sheetLink = 'https://docs.google.com/spreadsheets/d/' + CONFIG.SPREADSHEET_ID;
   var htmlBody = bodyLines.join('\n').replace(/\n/g, '<br>') + '\n<p><a href="' + sheetLink + '" style="display:inline-block;padding:10px 14px;background:#1a73e8;color:#fff;text-decoration:none;border-radius:4px">Open Spreadsheet</a></p>';
@@ -249,8 +249,32 @@ function sendItemCheckedEmail(itemName, row) {
   if (CONFIG.SEND_ATTACHMENT) {
     var blob = getSpreadsheetAttachmentBlob();
     if (blob) options.attachments = [blob];
+    else {
+      // fallback: attach nothing but include a note in the HTML body
+      options.htmlBody = htmlBody + '<p style="color:#666;font-size:12px">(Attachment unavailable; opening the spreadsheet using the button above.)</p>';
+    }
   }
   MailApp.sendEmail(CONFIG.EMAILS.join(','), subject, bodyLines.join('\n'), options);
+}
+
+/**
+ * Helper used by email senders to attempt to attach the spreadsheet, and gracefully
+ * fallback to sending only the sheet link if export fails or is unauthorized.
+ * Returns an options object suitable for MailApp.sendEmail (htmlBody already set).
+ */
+function safeAttachmentOptions(htmlBody) {
+  var options = { htmlBody: htmlBody };
+  if (!CONFIG.SEND_ATTACHMENT) return options;
+  var blob = null;
+  try {
+    blob = getSpreadsheetAttachmentBlob();
+  } catch (e) {
+    Logger.log('Attachment export error: ' + e);
+    blob = null;
+  }
+  if (blob) options.attachments = [blob];
+  else options.htmlBody = htmlBody + '<p style="color:#666;font-size:12px">(Attachment unavailable; open the spreadsheet using the button above.)</p>';
+  return options;
 }
 
 /**
