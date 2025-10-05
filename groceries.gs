@@ -285,12 +285,6 @@ function testSimulateNewItem(row, value) {
  */
 function recreateGroceriesTriggers() {
   var expected = { sendGroceriesReminder: true, handleGroceriesEdit: true, handleFormResponseEdit: true, handleFormSubmit: true };
-  if (!present.handleFormSubmit) {
-    ScriptApp.newTrigger('handleFormSubmit')
-      .forSpreadsheet(SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID))
-      .onFormSubmit()
-      .create();
-  }
   var triggers = ScriptApp.getProjectTriggers();
   var removed = [];
 
@@ -313,12 +307,21 @@ function recreateGroceriesTriggers() {
     try { present[t.getHandlerFunction()] = true; } catch (e) {}
   });
 
+  if (!present.handleFormSubmit) {
+    ScriptApp.newTrigger('handleFormSubmit')
+      .forSpreadsheet(SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID))
+      .onFormSubmit()
+      .create();
+    present.handleFormSubmit = true;
+  }
+
   if (!present.sendGroceriesReminder) {
     ScriptApp.newTrigger('sendGroceriesReminder')
       .timeBased()
       .everyDays(1)
       .atHour(18)
       .create();
+    present.sendGroceriesReminder = true;
   }
 
   if (!present.handleGroceriesEdit) {
@@ -326,6 +329,7 @@ function recreateGroceriesTriggers() {
       .forSpreadsheet(SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID))
       .onEdit()
       .create();
+    present.handleGroceriesEdit = true;
   }
 
   if (!present.handleFormResponseEdit) {
@@ -333,10 +337,11 @@ function recreateGroceriesTriggers() {
       .forSpreadsheet(SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID))
       .onEdit()
       .create();
+    present.handleFormResponseEdit = true;
   }
 
-  var nowPresent = Object.keys(present).concat(Object.keys(expected).filter(function(k){return !present[k];}));
+  var ensured = Object.keys(expected).filter(function(k){ return !!present[k]; });
   Logger.log('Removed triggers: ' + (removed.length ? removed.join(', ') : 'none'));
-  Logger.log('Current/ensured triggers: sendGroceriesReminder, handleGroceriesEdit');
-  return { removed: removed, ensured: ['sendGroceriesReminder', 'handleGroceriesEdit'] };
+  Logger.log('Current/ensured triggers: ' + ensured.join(', '));
+  return { removed: removed, ensured: ensured };
 }
