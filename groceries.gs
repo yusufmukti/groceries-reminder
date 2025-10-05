@@ -62,22 +62,23 @@ var CONFIG = {
   COL_ITEM: 2, // 'New Item to purchase?'
   COL_DONE: 3  // 'Done'
   ,
-  // Attach spreadsheet export (PDF) to emails when true
+  // Attach spreadsheet export (Excel .xlsx) to emails when true
   SEND_ATTACHMENT: true
 };
 
 /**
- * Return the spreadsheet as a PDF blob suitable for email attachment.
+ * Return the spreadsheet as an attachment blob (Excel .xlsx) suitable for email.
  */
-function getSpreadsheetPdfBlob() {
+function getSpreadsheetAttachmentBlob() {
   try {
     var file = DriveApp.getFileById(CONFIG.SPREADSHEET_ID);
     var now = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyyMMdd_HHmm');
-    var name = file.getName() + '-' + now + '.pdf';
-    var blob = file.getAs(MimeType.PDF).setName(name);
+    var baseName = file.getName() + '-' + now;
+    // Export as Excel workbook
+    var blob = file.getAs(MimeType.MICROSOFT_EXCEL).setName(baseName + '.xlsx');
     return blob;
   } catch (e) {
-    Logger.log('Error creating spreadsheet PDF blob: ' + e);
+    Logger.log('Error creating spreadsheet attachment blob: ' + e);
     return null;
   }
 }
@@ -128,13 +129,14 @@ function sendGroceriesReminder() {
     'Groceries Reminder Bot'
   ].join('\n');
   var subject = 'Daily Groceries Reminder: Items Pending';
+  var sheetLink = 'https://docs.google.com/spreadsheets/d/' + CONFIG.SPREADSHEET_ID;
+  var htmlBody = body.replace(/\n/g, '<br>') + '\n<p><a href="' + sheetLink + '" style="display:inline-block;padding:10px 14px;background:#1a73e8;color:#fff;text-decoration:none;border-radius:4px">Open Spreadsheet</a></p>';
+  var options = { htmlBody: htmlBody };
   if (CONFIG.SEND_ATTACHMENT) {
-    var blob = getSpreadsheetPdfBlob();
-    if (blob) MailApp.sendEmail(CONFIG.EMAILS.join(','), subject, body, { attachments: [blob] });
-    else MailApp.sendEmail(CONFIG.EMAILS.join(','), subject, body);
-  } else {
-    MailApp.sendEmail(CONFIG.EMAILS.join(','), subject, body);
+    var blob = getSpreadsheetAttachmentBlob();
+    if (blob) options.attachments = [blob];
   }
+  MailApp.sendEmail(CONFIG.EMAILS.join(','), subject, body, options);
 }
 
 /**
@@ -206,13 +208,14 @@ function sendImmediateNewItemEmail(itemName, row) {
     'Groceries Reminder Bot'
   ].join('\n');
   var subject = 'New Grocery Item Added: ' + itemName;
+  var sheetLink = 'https://docs.google.com/spreadsheets/d/' + CONFIG.SPREADSHEET_ID;
+  var htmlBody = body.replace(/\n/g, '<br>') + '\n<p><a href="' + sheetLink + '" style="display:inline-block;padding:10px 14px;background:#1a73e8;color:#fff;text-decoration:none;border-radius:4px">Open Spreadsheet</a></p>';
+  var options = { htmlBody: htmlBody };
   if (CONFIG.SEND_ATTACHMENT) {
-    var blob = getSpreadsheetPdfBlob();
-    if (blob) MailApp.sendEmail(CONFIG.EMAILS.join(','), subject, body, { attachments: [blob] });
-    else MailApp.sendEmail(CONFIG.EMAILS.join(','), subject, body);
-  } else {
-    MailApp.sendEmail(CONFIG.EMAILS.join(','), subject, body);
+    var blob = getSpreadsheetAttachmentBlob();
+    if (blob) options.attachments = [blob];
   }
+  MailApp.sendEmail(CONFIG.EMAILS.join(','), subject, body, options);
 }
 
 /**
@@ -233,13 +236,14 @@ function sendItemCheckedEmail(itemName, row) {
     'Groceries Reminder Bot'
   ].join('\n');
   var subject = 'Grocery Item Checked: ' + itemName;
+  var sheetLink = 'https://docs.google.com/spreadsheets/d/' + CONFIG.SPREADSHEET_ID;
+  var htmlBody = bodyLines.join('\n').replace(/\n/g, '<br>') + '\n<p><a href="' + sheetLink + '" style="display:inline-block;padding:10px 14px;background:#1a73e8;color:#fff;text-decoration:none;border-radius:4px">Open Spreadsheet</a></p>';
+  var options = { htmlBody: htmlBody };
   if (CONFIG.SEND_ATTACHMENT) {
-    var blob = getSpreadsheetPdfBlob();
-    if (blob) MailApp.sendEmail(CONFIG.EMAILS.join(','), subject, body, { attachments: [blob] });
-    else MailApp.sendEmail(CONFIG.EMAILS.join(','), subject, body);
-  } else {
-    MailApp.sendEmail(CONFIG.EMAILS.join(','), subject, body);
+    var blob = getSpreadsheetAttachmentBlob();
+    if (blob) options.attachments = [blob];
   }
+  MailApp.sendEmail(CONFIG.EMAILS.join(','), subject, bodyLines.join('\n'), options);
 }
 
 /**
