@@ -1,4 +1,27 @@
 /**
+ * Installable onFormSubmit handler for Form Responses tab
+ * Sends immediate email when a new item is submitted via Google Form
+ */
+function handleFormSubmit(e) {
+  try {
+    if (!e || !e.values) return;
+    // e.values: [Timestamp, New Item to purchase?, Done]
+    var itemValue = e.values[1];
+    if (!itemValue) return;
+    var row = e.range ? e.range.getRow() : 'unknown';
+    var key = 'formsubmit_notified:' + row + '|' + String(itemValue).trim();
+    var props = PropertiesService.getScriptProperties();
+    if (props.getProperty(key)) {
+      // already notified for this row+value
+      return;
+    }
+    sendImmediateNewItemEmail(itemValue, row);
+    props.setProperty(key, new Date().toISOString());
+  } catch (err) {
+    Logger.log('Error in handleFormSubmit: ' + err);
+  }
+}
+/**
  * Installable onEdit handler for Form Responses tab
  * Sends immediate email when a new item is submitted via Google Form
  */
@@ -190,6 +213,11 @@ function clearNotifiedCache() {
 }
 
 function createGroceriesTriggers() {
+  // create an installable onFormSubmit trigger for form responses tab
+  ScriptApp.newTrigger('handleFormSubmit')
+    .forSpreadsheet(SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID))
+    .onFormSubmit()
+    .create();
   // create a daily time-driven trigger (18:00 Jakarta)
   ScriptApp.newTrigger('sendGroceriesReminder')
     .timeBased()
@@ -256,7 +284,13 @@ function testSimulateNewItem(row, value) {
  * exist. Run this once from the Apps Script editor and authorize when prompted.
  */
 function recreateGroceriesTriggers() {
-  var expected = { sendGroceriesReminder: true, handleGroceriesEdit: true, handleFormResponseEdit: true };
+  var expected = { sendGroceriesReminder: true, handleGroceriesEdit: true, handleFormResponseEdit: true, handleFormSubmit: true };
+  if (!present.handleFormSubmit) {
+    ScriptApp.newTrigger('handleFormSubmit')
+      .forSpreadsheet(SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID))
+      .onFormSubmit()
+      .create();
+  }
   var triggers = ScriptApp.getProjectTriggers();
   var removed = [];
 
