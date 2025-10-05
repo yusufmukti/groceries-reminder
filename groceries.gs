@@ -71,11 +71,18 @@ var CONFIG = {
  */
 function getSpreadsheetAttachmentBlob() {
   try {
-    var file = DriveApp.getFileById(CONFIG.SPREADSHEET_ID);
-    var now = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyyMMdd_HHmm');
-    var baseName = file.getName() + '-' + now;
-    // Export as Excel workbook
-    var blob = file.getAs(MimeType.MICROSOFT_EXCEL).setName(baseName + '.xlsx');
+    var fileId = CONFIG.SPREADSHEET_ID;
+    var mime = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    var url = 'https://www.googleapis.com/drive/v3/files/' + fileId + '/export?mimeType=' + encodeURIComponent(mime);
+    var token = ScriptApp.getOAuthToken();
+    var resp = UrlFetchApp.fetch(url, { headers: { Authorization: 'Bearer ' + token }, muteHttpExceptions: true });
+    if (resp.getResponseCode() !== 200) {
+      Logger.log('Export failed: ' + resp.getResponseCode() + ' ' + resp.getContentText());
+      return null;
+    }
+    var blob = resp.getBlob();
+    var name = SpreadsheetApp.openById(fileId).getName() + '-' + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyyMMdd_HHmm') + '.xlsx';
+    blob.setName(name);
     return blob;
   } catch (e) {
     Logger.log('Error creating spreadsheet attachment blob: ' + e);
