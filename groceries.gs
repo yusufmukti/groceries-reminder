@@ -1,5 +1,5 @@
 // Groceries reminder script
-// Sends weekly reminder for unchecked groceries and immediate email on new item
+// Sends Daily reminder for unchecked groceries and immediate email on new item
 
 var CONFIG = {
   // Spreadsheet ID for: https://docs.google.com/spreadsheets/d/1UQC8zrrjyJLRDO49UrE6BIsHaYfZr8-Ci1HJMpkh9XY
@@ -48,7 +48,7 @@ function sendGroceriesReminder() {
   var body = [
     'Hello,',
     '',
-    'This is your weekly groceries reminder. The following items are still unchecked:',
+    'This is your daily groceries reminder. The following items are still unchecked:',
     '',
     unchecked.map(function(item, idx) { return (idx+1) + '. ' + item; }).join('\n'),
     '',
@@ -57,7 +57,7 @@ function sendGroceriesReminder() {
     'Best regards,',
     'Groceries Reminder Bot'
   ].join('\n');
-  var subject = 'Weekly Groceries Reminder: Items Pending';
+  var subject = 'Daily Groceries Reminder: Items Pending';
   MailApp.sendEmail(CONFIG.EMAILS.join(','), subject, body);
 }
 
