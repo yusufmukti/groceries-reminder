@@ -291,10 +291,10 @@ function createGroceriesTriggers() {
     .onEdit()
     .create();
 
-  // create a 15-minute polling trigger to detect checked items from mobile edits
+  // create a 1-minute polling trigger to detect checked items from mobile edits
   ScriptApp.newTrigger('pollCheckedItems')
     .timeBased()
-    .everyMinutes(15)
+    .everyMinutes(1)
     .create();
 }
 
@@ -403,7 +403,7 @@ function recreateGroceriesTriggers() {
   if (!present.pollCheckedItems) {
     ScriptApp.newTrigger('pollCheckedItems')
       .timeBased()
-      .everyMinutes(15)
+      .everyMinutes(1)
       .create();
     present.pollCheckedItems = true;
   }
