@@ -151,3 +151,53 @@ function testSimulateNewItem(row, value) {
   var e = { range: range };
   handleGroceriesEdit(e);
 }
+
+/**
+ * Recreate correct triggers: remove any unexpected triggers and ensure
+ * `sendGroceriesReminder` (time-driven) and `handleGroceriesEdit` (installable onEdit)
+ * exist. Run this once from the Apps Script editor and authorize when prompted.
+ */
+function recreateGroceriesTriggers() {
+  var expected = { sendGroceriesReminder: true, handleGroceriesEdit: true };
+  var triggers = ScriptApp.getProjectTriggers();
+  var removed = [];
+
+  // Remove triggers that are not expected
+  triggers.forEach(function(t) {
+    try {
+      var fn = t.getHandlerFunction();
+      if (!expected[fn]) {
+        ScriptApp.deleteTrigger(t);
+        removed.push(fn || '(unknown)');
+      }
+    } catch (e) {
+      // ignore
+    }
+  });
+
+  // Refresh list and create missing expected triggers
+  var present = {};
+  ScriptApp.getProjectTriggers().forEach(function(t) {
+    try { present[t.getHandlerFunction()] = true; } catch (e) {}
+  });
+
+  if (!present.sendGroceriesReminder) {
+    ScriptApp.newTrigger('sendGroceriesReminder')
+      .timeBased()
+      .onWeekDay(ScriptApp.WeekDay.SATURDAY)
+      .atHour(18)
+      .create();
+  }
+
+  if (!present.handleGroceriesEdit) {
+    ScriptApp.newTrigger('handleGroceriesEdit')
+      .forSpreadsheet(SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID))
+      .onEdit()
+      .create();
+  }
+
+  var nowPresent = Object.keys(present).concat(Object.keys(expected).filter(function(k){return !present[k];}));
+  Logger.log('Removed triggers: ' + (removed.length ? removed.join(', ') : 'none'));
+  Logger.log('Current/ensured triggers: sendGroceriesReminder, handleGroceriesEdit');
+  return { removed: removed, ensured: ['sendGroceriesReminder', 'handleGroceriesEdit'] };
+}
