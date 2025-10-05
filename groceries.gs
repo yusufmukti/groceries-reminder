@@ -111,3 +111,43 @@ function createGroceriesTriggers() {
     .onEdit()
     .create();
 }
+
+/**
+ * Debug helper: list installed triggers for this project (logs and returns an array)
+ */
+function listGroceriesTriggers() {
+  var triggers = ScriptApp.getProjectTriggers();
+  var out = triggers.map(function(t) {
+    try {
+      return t.getHandlerFunction() + ' | ' + t.getEventType() + ' | ' + t.getTriggerSource() + ' | ' + (t.getTriggerSourceId ? t.getTriggerSourceId() : 'n/a');
+    } catch (e) {
+      return 'trigger-info-error: ' + e;
+    }
+  });
+  Logger.log(out.join('\n'));
+  return out;
+}
+
+/**
+ * Send a small test email to the configured recipients so you can verify MailApp works
+ */
+function sendTestEmail() {
+  var body = 'Test email from groceries-reminder script. If you receive this, MailApp is working.';
+  MailApp.sendEmail(CONFIG.EMAILS.join(','), 'Groceries reminder - test email', body);
+}
+
+/**
+ * Test helper: simulate adding a new item programmatically (sets the value then calls the handler)
+ * Use from the Apps Script editor: testSimulateNewItem(3, 'Milk')
+ */
+function testSimulateNewItem(row, value) {
+  var ss = getSpreadsheet();
+  var sheet = ss.getSheetByName(CONFIG.SHEET_NAME);
+  if (!sheet) throw new Error('Sheet not found: ' + CONFIG.SHEET_NAME);
+  var range = sheet.getRange(row, CONFIG.COL_ITEM);
+  range.setValue(value);
+
+  // build a minimal event object and call the handler
+  var e = { range: range };
+  handleGroceriesEdit(e);
+}
