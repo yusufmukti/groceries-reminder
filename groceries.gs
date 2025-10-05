@@ -61,7 +61,26 @@ var CONFIG = {
   // Column indexes (1-based)
   COL_ITEM: 2, // 'New Item to purchase?'
   COL_DONE: 3  // 'Done'
+  ,
+  // Attach spreadsheet export (PDF) to emails when true
+  SEND_ATTACHMENT: true
 };
+
+/**
+ * Return the spreadsheet as a PDF blob suitable for email attachment.
+ */
+function getSpreadsheetPdfBlob() {
+  try {
+    var file = DriveApp.getFileById(CONFIG.SPREADSHEET_ID);
+    var now = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyyMMdd_HHmm');
+    var name = file.getName() + '-' + now + '.pdf';
+    var blob = file.getAs(MimeType.PDF).setName(name);
+    return blob;
+  } catch (e) {
+    Logger.log('Error creating spreadsheet PDF blob: ' + e);
+    return null;
+  }
+}
 
 function getSpreadsheet() {
   if (CONFIG.SPREADSHEET_ID) return SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
@@ -109,7 +128,13 @@ function sendGroceriesReminder() {
     'Groceries Reminder Bot'
   ].join('\n');
   var subject = 'Daily Groceries Reminder: Items Pending';
-  MailApp.sendEmail(CONFIG.EMAILS.join(','), subject, body);
+  if (CONFIG.SEND_ATTACHMENT) {
+    var blob = getSpreadsheetPdfBlob();
+    if (blob) MailApp.sendEmail(CONFIG.EMAILS.join(','), subject, body, { attachments: [blob] });
+    else MailApp.sendEmail(CONFIG.EMAILS.join(','), subject, body);
+  } else {
+    MailApp.sendEmail(CONFIG.EMAILS.join(','), subject, body);
+  }
 }
 
 /**
@@ -181,7 +206,13 @@ function sendImmediateNewItemEmail(itemName, row) {
     'Groceries Reminder Bot'
   ].join('\n');
   var subject = 'New Grocery Item Added: ' + itemName;
-  MailApp.sendEmail(CONFIG.EMAILS.join(','), subject, body);
+  if (CONFIG.SEND_ATTACHMENT) {
+    var blob = getSpreadsheetPdfBlob();
+    if (blob) MailApp.sendEmail(CONFIG.EMAILS.join(','), subject, body, { attachments: [blob] });
+    else MailApp.sendEmail(CONFIG.EMAILS.join(','), subject, body);
+  } else {
+    MailApp.sendEmail(CONFIG.EMAILS.join(','), subject, body);
+  }
 }
 
 /**
@@ -202,7 +233,13 @@ function sendItemCheckedEmail(itemName, row) {
     'Groceries Reminder Bot'
   ].join('\n');
   var subject = 'Grocery Item Checked: ' + itemName;
-  MailApp.sendEmail(CONFIG.EMAILS.join(','), subject, body);
+  if (CONFIG.SEND_ATTACHMENT) {
+    var blob = getSpreadsheetPdfBlob();
+    if (blob) MailApp.sendEmail(CONFIG.EMAILS.join(','), subject, body, { attachments: [blob] });
+    else MailApp.sendEmail(CONFIG.EMAILS.join(','), subject, body);
+  } else {
+    MailApp.sendEmail(CONFIG.EMAILS.join(','), subject, body);
+  }
 }
 
 /**
