@@ -206,6 +206,60 @@ function sendItemCheckedEmail(itemName, row) {
 }
 
 /**
+ * Polling function to detect items checked since last run.
+ * Runs every 15 minutes. Sends a single email listing all items
+ * that changed from unchecked -> checked since the last poll.
+ */
+function pollCheckedItems() {
+  var ss = getSpreadsheet();
+  var sheet = ss.getSheetByName(CONFIG.SHEET_NAME);
+  if (!sheet) return;
+
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) return;
+
+  var range = sheet.getRange(2, CONFIG.COL_ITEM, lastRow - 1, 2); // item + done
+  var values = range.getValues();
+
+  var props = PropertiesService.getScriptProperties();
+  var stateJson = props.getProperty('checkedState') || '{}';
+  var prevState = {};
+  try { prevState = JSON.parse(stateJson); } catch (e) { prevState = {}; }
+
+  var newlyChecked = [];
+  var newState = {};
+
+  for (var i = 0; i < values.length; i++) {
+    var rowIndex = i + 2; // sheet row
+    var item = values[i][0];
+    var done = values[i][1];
+    var isDone = (done === true || String(done).toLowerCase() === 'true');
+
+    // record new state
+    newState[rowIndex] = !!isDone;
+
+    // if previously not done (false/undefined) and now done -> notify
+    if (isDone && !prevState[rowIndex] && item) {
+      newlyChecked.push({ row: rowIndex, item: item });
+    }
+  }
+
+  // persist new state
+  props.setProperty('checkedState', JSON.stringify(newState));
+
+  if (newlyChecked.length === 0) return; // nothing to do
+
+  var bodyLines = ['Hello,', '', 'The following grocery items were checked in the last 15 minutes:', ''];
+  newlyChecked.forEach(function(it, idx) {
+    bodyLines.push((idx+1) + '. ' + it.item + ' (row ' + it.row + ')');
+  });
+  bodyLines.push('', 'Best regards,', 'Groceries Reminder Bot');
+
+  var subject = 'Checked Items Notification — ' + newlyChecked.length + ' item(s)';
+  MailApp.sendEmail(CONFIG.EMAILS.join(','), subject, bodyLines.join('\n'));
+}
+
+/**
  * Helper to clear notification cache (useful during testing)
  */
 function clearNotifiedCache() {
@@ -235,6 +289,12 @@ function createGroceriesTriggers() {
   ScriptApp.newTrigger('handleFormResponseEdit')
     .forSpreadsheet(SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID))
     .onEdit()
+    .create();
+
+  // create a 15-minute polling trigger to detect checked items from mobile edits
+  ScriptApp.newTrigger('pollCheckedItems')
+    .timeBased()
+    .everyMinutes(15)
     .create();
 }
 
@@ -338,6 +398,14 @@ function recreateGroceriesTriggers() {
       .onEdit()
       .create();
     present.handleFormResponseEdit = true;
+  }
+
+  if (!present.pollCheckedItems) {
+    ScriptApp.newTrigger('pollCheckedItems')
+      .timeBased()
+      .everyMinutes(15)
+      .create();
+    present.pollCheckedItems = true;
   }
 
   var ensured = Object.keys(expected).filter(function(k){ return !!present[k]; });
