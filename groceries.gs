@@ -162,10 +162,10 @@ function clearNotifiedCache() {
 }
 
 function createGroceriesTriggers() {
-  // create a weekly time-driven trigger (e.g., Saturday 18:00 Jakarta)
+  // create a daily time-driven trigger (18:00 Jakarta)
   ScriptApp.newTrigger('sendGroceriesReminder')
     .timeBased()
-    .onWeekDay(ScriptApp.WeekDay.SATURDAY)
+    .everyDays(1)
     .atHour(18)
     .create();
 
@@ -248,7 +248,7 @@ function recreateGroceriesTriggers() {
   if (!present.sendGroceriesReminder) {
     ScriptApp.newTrigger('sendGroceriesReminder')
       .timeBased()
-      .onWeekDay(ScriptApp.WeekDay.SATURDAY)
+      .everyDays(1)
       .atHour(18)
       .create();
   }
