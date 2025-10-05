@@ -1,15 +1,43 @@
+/**
+ * Installable onEdit handler for Form Responses tab
+ * Sends immediate email when a new item is submitted via Google Form
+ */
+function handleFormResponseEdit(e) {
+  try {
+    if (!e || !e.range) return;
+    var range = e.range;
+    var sheet = range.getSheet();
+    if (!sheet || sheet.getName() !== 'Form Responses 1') return;
+
+    // Only act on edits in the 'New Item to purchase?' column (column 2)
+    if (range.getColumn() === 2 && range.getRow() >= 2) {
+      var itemValue = range.getValue();
+      if (!itemValue) return;
+      var key = 'form_notified:' + range.getRow() + '|' + String(itemValue).trim();
+      var props = PropertiesService.getScriptProperties();
+      if (props.getProperty(key)) {
+        // already notified for this row+value
+        return;
+      }
+      sendImmediateNewItemEmail(itemValue, range.getRow());
+      props.setProperty(key, new Date().toISOString());
+    }
+  } catch (err) {
+    Logger.log('Error in handleFormResponseEdit: ' + err);
+  }
+}
 // Groceries reminder script
 // Sends Daily reminder for unchecked groceries and immediate email on new item
 
 var CONFIG = {
   // Spreadsheet ID for: https://docs.google.com/spreadsheets/d/1UQC8zrrjyJLRDO49UrE6BIsHaYfZr8-Ci1HJMpkh9XY
   SPREADSHEET_ID: '1UQC8zrrjyJLRDO49UrE6BIsHaYfZr8-Ci1HJMpkh9XY',
-  SHEET_NAME: 'item',
+  SHEET_NAME: 'Form Responses 1',
   // Recipients for reminders and notifications
   EMAILS: ['yusufajarmoekti@gmail.com', 'tiarahediati@gmail.com'],
   // Column indexes (1-based)
-  COL_ITEM: 1,
-  COL_DONE: 2
+  COL_ITEM: 2, // 'New Item to purchase?'
+  COL_DONE: 3  // 'Done'
 };
 
 function getSpreadsheet() {
@@ -30,7 +58,7 @@ function sendGroceriesReminder() {
   var lastRow = sheet.getLastRow();
   if (lastRow < 2) return; // no data
 
-  var rows = sheet.getRange(2, CONFIG.COL_ITEM, lastRow - 1, CONFIG.COL_DONE).getValues();
+  var rows = sheet.getRange(2, CONFIG.COL_ITEM, lastRow - 1, 2).getValues(); // COL_ITEM and COL_DONE
   var unchecked = [];
 
   for (var i = 0; i < rows.length; i++) {
@@ -78,8 +106,8 @@ function handleGroceriesEdit(e) {
 
     var props = PropertiesService.getScriptProperties();
 
-    // If editing the Item column (A), send new item notification
-    if (range.getColumn() === CONFIG.COL_ITEM && range.getRow() >= 2) {
+    // If editing the Item column (Form Responses 1, column 2), send new item notification
+    if (range.getSheet().getName() === CONFIG.SHEET_NAME && range.getColumn() === CONFIG.COL_ITEM && range.getRow() >= 2) {
       var newValue = range.getValue();
       if (!newValue) return; // ignore clears
 
@@ -94,8 +122,8 @@ function handleGroceriesEdit(e) {
       props.setProperty(key, new Date().toISOString());
     }
 
-    // If editing the Done column (B), send checked notification if checked
-    if (range.getColumn() === CONFIG.COL_DONE && range.getRow() >= 2) {
+    // If editing the Done column (Form Responses 1, column 3), send checked notification if checked
+    if (range.getSheet().getName() === CONFIG.SHEET_NAME && range.getColumn() === CONFIG.COL_DONE && range.getRow() >= 2) {
       var checked = range.getValue();
       var itemValue = range.getSheet().getRange(range.getRow(), CONFIG.COL_ITEM).getValue();
       if (!itemValue) return;
@@ -169,8 +197,14 @@ function createGroceriesTriggers() {
     .atHour(18)
     .create();
 
-  // create an installable onEdit trigger for immediate emails
+  // create an installable onEdit trigger for immediate emails (item tab)
   ScriptApp.newTrigger('handleGroceriesEdit')
+    .forSpreadsheet(SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID))
+    .onEdit()
+    .create();
+
+  // create an installable onEdit trigger for form responses tab
+  ScriptApp.newTrigger('handleFormResponseEdit')
     .forSpreadsheet(SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID))
     .onEdit()
     .create();
@@ -222,7 +256,7 @@ function testSimulateNewItem(row, value) {
  * exist. Run this once from the Apps Script editor and authorize when prompted.
  */
 function recreateGroceriesTriggers() {
-  var expected = { sendGroceriesReminder: true, handleGroceriesEdit: true };
+  var expected = { sendGroceriesReminder: true, handleGroceriesEdit: true, handleFormResponseEdit: true };
   var triggers = ScriptApp.getProjectTriggers();
   var removed = [];
 
@@ -255,6 +289,13 @@ function recreateGroceriesTriggers() {
 
   if (!present.handleGroceriesEdit) {
     ScriptApp.newTrigger('handleGroceriesEdit')
+      .forSpreadsheet(SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID))
+      .onEdit()
+      .create();
+  }
+
+  if (!present.handleFormResponseEdit) {
+    ScriptApp.newTrigger('handleFormResponseEdit')
       .forSpreadsheet(SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID))
       .onEdit()
       .create();
