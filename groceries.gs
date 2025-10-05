@@ -45,8 +45,20 @@ function sendGroceriesReminder() {
 
   if (unchecked.length === 0) return;
 
-  var body = 'Reminder: the following groceries are not yet checked as done:\n\n' + unchecked.join('\n');
-  MailApp.sendEmail(CONFIG.EMAILS.join(','), 'Groceries reminder', body);
+  var body = [
+    'Hello,',
+    '',
+    'This is your weekly groceries reminder. The following items are still unchecked:',
+    '',
+    unchecked.map(function(item, idx) { return (idx+1) + '. ' + item; }).join('\n'),
+    '',
+    'Please review and check them off once purchased.',
+    '',
+    'Best regards,',
+    'Groceries Reminder Bot'
+  ].join('\n');
+  var subject = 'Weekly Groceries Reminder: Items Pending';
+  MailApp.sendEmail(CONFIG.EMAILS.join(','), subject, body);
 }
 
 /**
@@ -104,16 +116,42 @@ function handleGroceriesEdit(e) {
 }
 
 function sendImmediateNewItemEmail(itemName, row) {
-  var body = 'A new grocery item was added (row ' + row + '):\n\n' + itemName + '\n\nPlease check it when you shop.';
-  MailApp.sendEmail(CONFIG.EMAILS.join(','), 'New grocery item added', body);
+  var body = [
+    'Hello,',
+    '',
+    'A new grocery item has been added to your list:',
+    '',
+    'Item: ' + itemName,
+    'Row: ' + row,
+    '',
+    'Please check it off once purchased.',
+    '',
+    'Best regards,',
+    'Groceries Reminder Bot'
+  ].join('\n');
+  var subject = 'New Grocery Item Added: ' + itemName;
+  MailApp.sendEmail(CONFIG.EMAILS.join(','), subject, body);
 }
 
 /**
  * Send an email when an item is checked as done
  */
 function sendItemCheckedEmail(itemName, row) {
-  var body = 'The grocery item has been checked as done (row ' + row + '):\n\n' + itemName + '\n\nYou may remove it from your shopping list.';
-  MailApp.sendEmail(CONFIG.EMAILS.join(','), 'Grocery item checked as done', body);
+  var body = [
+    'Hello,',
+    '',
+    'The following grocery item has been checked as done:',
+    '',
+    'Item: ' + itemName,
+    'Row: ' + row,
+    '',
+    'You may remove it from your shopping list.',
+    '',
+    'Best regards,',
+    'Groceries Reminder Bot'
+  ].join('\n');
+  var subject = 'Grocery Item Checked: ' + itemName;
+  MailApp.sendEmail(CONFIG.EMAILS.join(','), subject, body);
 }
 
 /**
